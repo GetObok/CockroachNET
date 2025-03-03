@@ -419,7 +419,7 @@ generate_summary() {
     echo "Throughput tests failed: $(grep -c "Throughput test failed" "$OUTPUT_FILE")"
     echo ""
     echo "--- AVERAGE METRICS ---"
-    echo "Average latency (msec): $(grep -oP 'time=\K[0-9.]+' "$LOG_DIR"/ping_monitoring_*.log 2>/dev/null | awk '{ sum += $1; n++ } END { if (n > 0) print sum / n; else print "N/A" }')"
+    echo "Average latency (msec): $(grep -oP 'Ping to [0-9.]+: \K[0-9.]+' "$LOG_DIR"/ping_monitoring_*.log 2>/dev/null | awk '{ sum += $1; n++ } END { if (n > 0) print sum / n; else print "N/A" }')"
     echo ""
     echo "For detailed results, please check $OUTPUT_FILE"
   } > "$summary_file"
