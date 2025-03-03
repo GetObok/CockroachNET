@@ -1,29 +1,28 @@
-# CockroachNET
+# COCKROACHNET
 
-## CockroachDB Network Connectivity Testing Framework
+## Distributed System Network Testing Framework
 
-CockroachNET is a comprehensive network diagnostics tool designed to monitor, test, and troubleshoot connectivity issues in clusters running on Linux based systems, specifically designed to test highly distributed systems.
+COCKROACHNET is a comprehensive network diagnostics tool designed to monitor, test, and troubleshoot connectivity issues in distributed systems running on Linux-based environments.
 
 ## Overview
 
-CockroachNET provides continuous monitoring and testing of network connectivity between nodes, helping identify intermittent issues that can affect cluster stability and performance. The tool measures key metrics including latency, packet loss, throughput, and TCP connection quality.
+NetProbe provides continuous monitoring and testing of network connectivity between nodes in any distributed system, helping identify intermittent issues that can affect system stability and performance. The tool measures key metrics including latency, packet loss, throughput, and TCP connection quality over extended periods.
 
 ## Features
 
 - **Basic connectivity testing** with ping, port checks, and traceroute
 - **Throughput measurement** between nodes using iperf3
 - **Continuous monitoring** to catch intermittent issues
-- **Packet capture** for detailed analysis of CockroachDB traffic
+- **Packet capture** for detailed traffic analysis
 - **Socket statistics** collection
 - **TCP metrics** including retransmission monitoring
-- **CockroachDB log monitoring** for network-related errors
 - **Detailed reporting** with alerts and summary statistics
 
 ## Installation
 
 1. Clone this repository or download the script:
    ```
-   git clone https://github.com/GetObok/cockroachnet.git
+   git clone https://github.com/GetObok/netprobe.git
    ```
 
 2. Make the script executable:
@@ -33,35 +32,53 @@ CockroachNET provides continuous monitoring and testing of network connectivity 
 
 3. Install dependencies (must have root privileges):
    ```
+   # On Fedora/Red Hat-based systems
    dnf install -y ping nc iperf3 tcpdump ss traceroute nmap
+   
+   # On Debian/Ubuntu-based systems
+   apt install -y iputils-ping netcat iperf3 tcpdump iproute2 traceroute nmap
    ```
-
-## Configuration
-
-Edit the configuration section at the top of the script to:
-- Specify your CockroachDB node IP addresses
-- Set test duration and intervals
-- Configure alert thresholds for latency and packet loss
-- Set log directory and other parameters
 
 ## Usage
 
-Run the script on each node in your CockroachDB cluster:
+NetProbe accepts command-line arguments to customize its behavior:
 
 ```
-./cockroachnet.sh
+./cockroachnet.sh [options]
+
+Options:
+  -n, --nodes IP1,IP2,...    Comma-separated list of node IPs to test
+  -p, --ports PORT1,PORT2... Comma-separated list of ports to test
+  -d, --duration SECONDS     Test duration in seconds (default: 3600)
+  -l, --log-dir DIRECTORY    Directory to store logs (default: /var/log/netprobe-tests)
+  -i, --interval SECONDS     Interval between test runs (default: 60)
+  --ping-interval SECONDS    Interval between ping tests (default: 5)
+  --latency-threshold MS     Alert threshold for latency in ms (default: 100)
+  --loss-threshold PERCENT   Alert threshold for packet loss in % (default: 1)
+  -h, --help                 Display this help message
+```
+
+### Examples
+
+Test connectivity to multiple nodes with specific ports:
+```
+./cockroachnet.sh --nodes 10.0.0.1,10.0.0.2,10.0.0.3 --ports 8080,9090,26257
+```
+
+Run an extended test with custom thresholds:
+```
+./cockroachnet.sh --nodes 192.168.1.100 --ports 27017,27018 --duration 86400 --latency-threshold 50 --loss-threshold 0.5
 ```
 
 For long-term monitoring, set up a scheduled job using cron:
-
 ```
 # Run network testing daily at 2 AM
-0 2 * * * /path/to/cockroachnet.sh
+0 2 * * * /path/to/cockroachnet.sh --nodes 10.0.0.1,10.0.0.2 --ports 8080,9090
 ```
 
 ## Output
 
-The script generates detailed logs in `/var/log/cockroach-network-tests/` including:
+The script generates detailed logs including:
 - Full test results and metrics
 - Alerts for connectivity issues
 - Summarized reports
