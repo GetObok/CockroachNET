@@ -212,7 +212,8 @@ test_throughput() {
   throughput=$(echo "$iperf_result" | grep -oP '"bits_per_second":\s*\K[0-9.]+' | tail -1)
   throughput_mbps=$(echo "$throughput/1000000" | bc -l)
   
-  echo "Throughput: ${throughput_mbps:.2f} Mbps from $source_node to $target_node" | tee -a "$OUTPUT_FILE"
+  throughput_mbps=$(printf "%.2f" "$throughput_mbps")
+  echo "Throughput: ${throughput_mbps} Mbps from $source_node to $target_node" | tee -a "$OUTPUT_FILE"
   return 0
 }
 
@@ -225,18 +226,12 @@ capture_traffic() {
   
   local capture_file="$LOG_DIR/traffic_$(date +%Y%m%d_%H%M%S).pcap"
   
-  # Construct the port filter for tcpdump
-  local port_filter=""
-  for port in "${PORTS[@]}"; do
-    if [ -z "$port_filter" ]; then
-      port_filter="tcp port $port"
-    else
-      port_filter="$port_filter or tcp port $port"
-    fi
-  done
+  # Construct a simplified port filter for tcpdump
+  local port_list=$(printf ",%s" "${PORTS[@]}")
+  port_list=${port_list:1}  # Remove the leading comma
   
   # Capture traffic on specified ports
-  tcpdump_cmd="tcpdump -i any \"($port_filter)\" -w $capture_file -c 1000"
+  tcpdump_cmd="tcpdump -i any 'tcp port $(echo $port_list | sed 's/,/ or tcp port /g')' -w $capture_file -c 1000"
   
   # Run tcpdump on the node (this assumes you have SSH key authentication set up)
   # For local node, run directly
