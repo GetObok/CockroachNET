@@ -226,17 +226,22 @@ capture_traffic() {
   
   local capture_file="$LOG_DIR/traffic_$(date +%Y%m%d_%H%M%S).pcap"
   
-  # Construct a simplified port filter for tcpdump
-  local port_list=$(printf ",%s" "${PORTS[@]}")
-  port_list=${port_list:1}  # Remove the leading comma
+  # Simplest approach - for a small number of ports
+  if [ ${#PORTS[@]} -eq 1 ]; then
+    # If only one port, use simple syntax
+    tcpdump_cmd="tcpdump -i any tcp port ${PORTS[0]} -w $capture_file -c 1000"
+  else
+    # For multiple ports, create an expression with parentheses
+    local port_expr="tcp port ${PORTS[0]}"
+    for ((i=1; i<${#PORTS[@]}; i++)); do
+      port_expr="$port_expr or tcp port ${PORTS[$i]}"
+    done
+    tcpdump_cmd="tcpdump -i any \"($port_expr)\" -w $capture_file -c 1000"
+  fi
   
-  # Capture traffic on specified ports
-  tcpdump_cmd="tcpdump -i any 'tcp port $(echo $port_list | sed 's/,/ or tcp port /g')' -w $capture_file -c 1000"
-  
-  # Run tcpdump on the node (this assumes you have SSH key authentication set up)
-  # For local node, run directly
+  # Run tcpdump on the node
   if [ "$node" == "$(hostname -I | awk '{print $1}')" ]; then
-    $tcpdump_cmd &
+    eval $tcpdump_cmd &
     tcpdump_pid=$!
     sleep $duration
     kill $tcpdump_pid 2>/dev/null
