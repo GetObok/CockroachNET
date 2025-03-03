@@ -139,7 +139,7 @@ capture_cockroach_traffic() {
   local capture_file="$LOG_DIR/cockroach_traffic_$(date +%Y%m%d_%H%M%S).pcap"
   
   # Capture traffic on CockroachDB ports
-  tcpdump_cmd="tcpdump -i any 'port 26257 or port 8080' -w $capture_file -c 1000"
+  tcpdump_cmd="tcpdump -i any 'tcp port 26257 or tcp port 8080' -w $capture_file -c 1000"
   
   # Run tcpdump on the node (this assumes you have SSH key authentication set up)
   # For local node, run directly
