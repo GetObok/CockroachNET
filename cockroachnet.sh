@@ -236,7 +236,7 @@ capture_traffic() {
   done
   
   # Capture traffic on specified ports
-  tcpdump_cmd="tcpdump -i any '($port_filter)' -w $capture_file -c 1000"
+  tcpdump_cmd="tcpdump -i any \"($port_filter)\" -w $capture_file -c 1000"
   
   # Run tcpdump on the node (this assumes you have SSH key authentication set up)
   # For local node, run directly
