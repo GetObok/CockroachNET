@@ -104,7 +104,7 @@ parse_arguments() {
 # Ensure needed tools are installed
 check_requirements() {
   echo "Checking for required tools..."
-  local required_tools=("ping" "nc" "iperf3" "tcpdump" "ss" "traceroute" "nmap")
+  local required_tools=("ping" "nc" "iperf3" "tcpdump" "ss" "traceroute" "nmap" "bc")
   local missing_tools=()
   
   for tool in "${required_tools[@]}"; do
@@ -115,7 +115,7 @@ check_requirements() {
   
   if [ ${#missing_tools[@]} -ne 0 ]; then
     echo "Missing required tools: ${missing_tools[*]}"
-    echo "Please install them using: dnf install -y ${missing_tools[*]}"
+    echo "Please install them using: yum install -y iputils nc iperf3 tcpdump iproute nmap-ncat traceroute nmap bc"
     exit 1
   fi
   
@@ -147,7 +147,7 @@ test_basic_connectivity() {
   
   # Extract packet loss percentage and round-trip times
   packet_loss=$(echo "$ping_result" | grep -oP '\d+(?=% packet loss)')
-  avg_rtt=$(echo "$ping_result" | grep -oP 'rtt min/avg/max/mdev = \K[^/]+/\K[^/]+')
+  avg_rtt=$(echo "$ping_result" | grep -oP 'rtt min/avg/max/mdev = [^/]+/\K[^/]+')
   
   if [ "$ping_status" -ne 0 ]; then
     echo "ALERT: Cannot ping $target_node from $source_node" | tee -a "$OUTPUT_FILE"
@@ -155,7 +155,7 @@ test_basic_connectivity() {
   elif [ -n "$packet_loss" ] && [ "$packet_loss" -gt "$ALERT_THRESHOLD_PACKET_LOSS" ]; then
     echo "ALERT: High packet loss ($packet_loss%) to $target_node from $source_node" | tee -a "$OUTPUT_FILE"
     return 2
-  elif [ -n "$avg_rtt" ] && awk "BEGIN {exit !($avg_rtt > $ALERT_THRESHOLD_LATENCY_MS)}"; then
+  elif [ -n "$avg_rtt" ] && (echo "$avg_rtt > $ALERT_THRESHOLD_LATENCY_MS" | bc -l | grep -q 1); then
     echo "ALERT: High latency ($avg_rtt ms) to $target_node from $source_node" | tee -a "$OUTPUT_FILE"
     return 3
   fi
@@ -208,8 +208,14 @@ test_throughput() {
     return 1
   fi
   
-  # Extract throughput if in JSON format
-  throughput=$(echo "$iperf_result" | grep -oP '"bits_per_second":\s*\K[0-9.]+' | tail -1)
+  # Extract throughput if in JSON format - handle both regular and scientific notation
+  throughput=$(echo "$iperf_result" | grep -oP '"bits_per_second":\s*\K[0-9.]+e?[-+]?[0-9]*' | tail -1)
+  
+  # Handle scientific notation if present
+  if [[ $throughput == *e* ]]; then
+    throughput=$(echo "$throughput" | awk '{printf "%f", $1}')
+  fi
+  
   throughput_mbps=$(echo "$throughput/1000000" | bc -l)
   
   throughput_mbps=$(printf "%.2f" "$throughput_mbps")
@@ -236,7 +242,7 @@ capture_traffic() {
     for ((i=1; i<${#PORTS[@]}; i++)); do
       port_expr="$port_expr or tcp port ${PORTS[$i]}"
     done
-    tcpdump_cmd="tcpdump -i any \"($port_expr)\" -w $capture_file -c 1000"
+    tcpdump_cmd="tcpdump -i any '($port_expr)' -w $capture_file -c 1000"
   fi
   
   # Run tcpdump on the node
@@ -257,13 +263,13 @@ check_socket_stats() {
   
   echo "Checking socket statistics on $node..." | tee -a "$OUTPUT_FILE"
   
-  # Construct the port filter for ss
+  # Construct the port filter for ss with proper word boundaries
   local port_filter=""
   for port in "${PORTS[@]}"; do
     if [ -z "$port_filter" ]; then
-      port_filter="$port"
+      port_filter=":$port\\b"
     else
-      port_filter="$port_filter|$port"
+      port_filter="$port_filter|:$port\\b"
     fi
   done
   
@@ -289,8 +295,8 @@ check_tcp_metrics() {
   
   echo "$netstat_result" >> "$OUTPUT_FILE"
   
-  # Check for concerning patterns
-  retrans_count=$(echo "$netstat_result" | grep 'retransmitted' | awk '{print $1}')
+  # Check for concerning patterns with more robust extraction
+  retrans_count=$(echo "$netstat_result" | grep -oP '([0-9]+) segments retransmitted' | awk '{print $1}')
   
   if [ -n "$retrans_count" ] && [ "$retrans_count" -gt 100 ]; then
     echo "ALERT: High TCP retransmission count ($retrans_count) on $node" | tee -a "$OUTPUT_FILE"
@@ -308,16 +314,21 @@ check_network_path() {
   
   echo "$traceroute_result" >> "$OUTPUT_FILE"
   
-  # Count hops
-  hop_count=$(echo "$traceroute_result" | grep -c "^ [0-9]")
-  
-  echo "Path to $target_node has $hop_count hops" | tee -a "$OUTPUT_FILE"
-  
-  # Check for timeouts in the path
-  timeout_count=$(echo "$traceroute_result" | grep -c '\* \* \*')
-  
-  if [ "$timeout_count" -gt 0 ]; then
-    echo "ALERT: Path to $target_node has $timeout_count hops with timeouts" | tee -a "$OUTPUT_FILE"
+  # Check if traceroute was successful before counting hops
+  if [ -n "$traceroute_result" ]; then
+    # Count hops
+    hop_count=$(echo "$traceroute_result" | grep -c "^ [0-9]")
+    
+    echo "Path to $target_node has $hop_count hops" | tee -a "$OUTPUT_FILE"
+    
+    # Check for timeouts in the path
+    timeout_count=$(echo "$traceroute_result" | grep -c '\* \* \*')
+    
+    if [ "$timeout_count" -gt 0 ]; then
+      echo "ALERT: Path to $target_node has $timeout_count hops with timeouts" | tee -a "$OUTPUT_FILE"
+    fi
+  else
+    echo "Error: Could not run traceroute to $target_node" | tee -a "$OUTPUT_FILE"
   fi
 }
 
@@ -385,8 +396,8 @@ run_continuous_ping() {
         ping_time=$(echo "$ping_result" | grep -oP 'time=\K[0-9.]+')
         echo "[$timestamp] Ping to $target_node: ${ping_time}ms" >> "$ping_log"
         
-        # Alert on high latency
-        if [ -n "$ping_time" ] && awk "BEGIN {exit !($ping_time > $ALERT_THRESHOLD_LATENCY_MS)}"; then
+        # Alert on high latency with proper comparison
+        if [ -n "$ping_time" ] && (echo "$ping_time > $ALERT_THRESHOLD_LATENCY_MS" | bc -l | grep -q 1); then
           echo "[$timestamp] ALERT: High latency (${ping_time}ms) to $target_node" | tee -a "$ping_log" "$OUTPUT_FILE"
         fi
       fi
@@ -419,7 +430,7 @@ generate_summary() {
     echo "Throughput tests failed: $(grep -c "Throughput test failed" "$OUTPUT_FILE")"
     echo ""
     echo "--- AVERAGE METRICS ---"
-    echo "Average latency (msec): $(grep -oP 'Ping to [0-9.]+: \K[0-9.]+' "$LOG_DIR"/ping_monitoring_*.log 2>/dev/null | awk '{ sum += $1; n++ } END { if (n > 0) print sum / n; else print "N/A" }')"
+    echo "Average latency (msec): $(grep -oP 'Ping to [^:]+: \K[0-9.]+' "$LOG_DIR"/ping_monitoring_*.log 2>/dev/null | awk '{ sum += $1; n++ } END { if (n > 0) print sum / n; else print "N/A" }')"
     echo ""
     echo "For detailed results, please check $OUTPUT_FILE"
   } > "$summary_file"
