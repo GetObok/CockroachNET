@@ -6,7 +6,7 @@ COCKROACHNET is a comprehensive network diagnostics tool designed to monitor, te
 
 ## Overview
 
-NetProbe provides continuous monitoring and testing of network connectivity between nodes in any distributed system, helping identify intermittent issues that can affect system stability and performance. The tool measures key metrics including latency, packet loss, throughput, and TCP connection quality over extended periods.
+CockroachNET provides continuous monitoring and testing of network connectivity between nodes in any distributed system, helping identify intermittent issues that can affect system stability and performance. The tool measures key metrics including latency, packet loss, throughput, and TCP connection quality over extended periods.
 
 ## Features
 
@@ -22,7 +22,7 @@ NetProbe provides continuous monitoring and testing of network connectivity betw
 
 1. Clone this repository or download the script:
    ```
-   git clone https://github.com/GetObok/netprobe.git
+   git clone https://github.com/GetObok/CockroachNET.git
    ```
 
 2. Make the script executable:
@@ -44,7 +44,7 @@ NetProbe provides continuous monitoring and testing of network connectivity betw
 
 ## Usage
 
-NetProbe accepts command-line arguments to customize its behavior:
+CockroachNET accepts command-line arguments to customize its behavior:
 
 ```
 ./cockroachnet.sh [options]
@@ -53,7 +53,7 @@ Options:
   -n, --nodes IP1,IP2,...    Comma-separated list of node IPs to test
   -p, --ports PORT1,PORT2... Comma-separated list of ports to test
   -d, --duration SECONDS     Test duration in seconds (default: 3600)
-  -l, --log-dir DIRECTORY    Directory to store logs (default: /var/log/netprobe-tests)
+  -l, --log-dir DIRECTORY    Directory to store logs (default: /var/log/CockroachNET-tests)
   -i, --interval SECONDS     Interval between test runs (default: 60)
   --ping-interval SECONDS    Interval between ping tests (default: 5)
   --latency-threshold MS     Alert threshold for latency in ms (default: 100)
@@ -92,7 +92,7 @@ The script generates detailed logs including:
 - Summarized reports
 - Packet captures (PCAP files)
 
-All results are stored in `/var/log/netprobe-tests/` by default.
+All results are stored in `/var/log/CockroachNET-tests/` by default.
 
 ## Troubleshooting
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# NetProbe: Distributed System Network Testing Tool
+# CockroachNET: Distributed System Network Testing Tool
 # Tests network connectivity between distributed system nodes
 # and reports on packet loss, latency, throughput, and other metrics.
 
@@ -7,7 +7,7 @@
 DEFAULT_NODES=()
 DEFAULT_PORTS=("8080")
 DEFAULT_TEST_DURATION=3600
-DEFAULT_LOG_DIR="/var/log/netprobe-tests"
+DEFAULT_LOG_DIR="/var/log/CockroachNET-tests"
 DEFAULT_INTERVAL=60
 DEFAULT_PING_INTERVAL=5
 DEFAULT_ALERT_THRESHOLD_LATENCY_MS=100
@@ -24,7 +24,7 @@ parse_arguments() {
     echo "  -n, --nodes IP1,IP2,...    Comma-separated list of node IPs to test"
     echo "  -p, --ports PORT1,PORT2... Comma-separated list of ports to test"
     echo "  -d, --duration SECONDS     Test duration in seconds (default: 3600)"
-    echo "  -l, --log-dir DIRECTORY    Directory to store logs (default: /var/log/netprobe-tests)"
+    echo "  -l, --log-dir DIRECTORY    Directory to store logs (default: /var/log/CockroachNET-tests)"
     echo "  -i, --interval SECONDS     Interval between test runs (default: 60)"
     echo "  --ping-interval SECONDS    Interval between ping tests (default: 5)"
     echo "  --latency-threshold MS     Alert threshold for latency in ms (default: 100)"
