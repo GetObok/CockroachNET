@@ -33,10 +33,13 @@ NetProbe provides continuous monitoring and testing of network connectivity betw
 3. Install dependencies (must have root privileges):
    ```
    # On Fedora/Red Hat-based systems
-   dnf install -y ping nc iperf3 tcpdump ss traceroute nmap
+   dnf install -y ping nc iperf3 tcpdump ss traceroute nmap bc
+   
+   # On CentOS 7/RHEL 7
+   yum install -y iputils nc iperf3 tcpdump iproute nmap-ncat traceroute nmap bc
    
    # On Debian/Ubuntu-based systems
-   apt install -y iputils-ping netcat iperf3 tcpdump iproute2 traceroute nmap
+   apt install -y iputils-ping netcat iperf3 tcpdump iproute2 traceroute nmap bc
    ```
 
 ## Usage
@@ -70,6 +73,11 @@ Run an extended test with custom thresholds:
 ./cockroachnet.sh --nodes 192.168.1.100 --ports 27017,27018 --duration 86400 --latency-threshold 50 --loss-threshold 0.5
 ```
 
+Quick test for 1 minute:
+```
+./cockroachnet.sh --nodes 192.168.0.84 --ports 2342 --duration 60
+```
+
 For long-term monitoring, set up a scheduled job using cron:
 ```
 # Run network testing daily at 2 AM
@@ -83,6 +91,27 @@ The script generates detailed logs including:
 - Alerts for connectivity issues
 - Summarized reports
 - Packet captures (PCAP files)
+
+All results are stored in `/var/log/netprobe-tests/` by default.
+
+## Troubleshooting
+
+If you encounter high TCP retransmission counts:
+
+1. Check if it's a historical counter by running:
+   ```
+   netstat -s | grep -i retrans
+   ```
+   
+2. Look for specific issues using:
+   - MTU mismatches: `ip link show | grep mtu`
+   - TCP offloading: `ethtool -k <interface>`
+   - Duplex/speed mismatches: `ethtool <interface>`
+
+3. For cross-platform issues between Windows and Linux:
+   - Consider disabling TCP offloading features
+   - Test with different MTU settings
+   - Check cable quality and switch port errors
 
 ## License
 
